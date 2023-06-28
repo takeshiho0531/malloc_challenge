@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define INT_MAX 2147483647
 //
 // Interfaces to get memory pages from OS
 //
@@ -38,7 +39,7 @@ typedef struct my_heap_t {
 //
 // Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
-my_heap_t my_heap;
+my_heap_t my_heap[5];
 
 //
 // Helper functions (feel free to add/remove/edit!)
@@ -46,15 +47,22 @@ my_heap_t my_heap;
 
 void my_add_to_free_list(my_metadata_t *metadata) {
   assert(!metadata->next);
-  metadata->next = my_heap.free_head;
-  my_heap.free_head = metadata;
+  int size, bin_number;
+  size = metadata->size;
+  bin_number = size/1000;
+  metadata->next = my_heap[bin_number].free_head;
+  my_heap[bin_number].free_head = metadata;
 }
 
 void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
+  int size, bin_number;
+  size = metadata->size;
+  bin_number = size/1000;
+
   if (prev) {
     prev->next = metadata->next;
   } else {
-    my_heap.free_head = metadata->next;
+    my_heap[bin_number].free_head = metadata->next;
   }
   metadata->next = NULL;
 }
@@ -65,9 +73,11 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
 
 // This is called at the beginning of each challenge.
 void my_initialize() {
-  my_heap.free_head = &my_heap.dummy;
-  my_heap.dummy.size = 0;
-  my_heap.dummy.next = NULL;
+  for(int i=0; i<5; i++){
+    my_heap[i].free_head = &my_heap[i].dummy;
+    my_heap[i].dummy.size = 0;
+    my_heap[i].dummy.next = NULL;
+  }
 }
 
 // my_malloc() is called every time an object is allocated.
@@ -75,13 +85,33 @@ void my_initialize() {
 // 4000. You are not allowed to use any library functions other than
 // mmap_from_system() / munmap_to_system().
 void *my_malloc(size_t size) {
-  my_metadata_t *metadata = my_heap.free_head;
+  int bin_number = size/1000;
+  my_metadata_t *metadata = my_heap[bin_number].free_head;
   my_metadata_t *prev = NULL;
+
+  my_metadata_t *best_data = NULL;
+  my_metadata_t *prev_best_data = NULL;
+  //int waste = INT_MAX;
   // First-fit: Find the first free slot the object fits.
   // TODO: Update this logic to Best-fit!
-  while (metadata && metadata->size < size) {
-    prev = metadata;
-    metadata = metadata->next;
+
+  while (bin_number<5){
+    metadata=my_heap[bin_number].free_head;
+    prev = NULL;
+    while (metadata && metadata->size < size) {
+      prev = metadata;
+      metadata = metadata->next;
+    }
+
+    if (metadata){
+      prev_best_data = prev;
+      best_data = metadata;
+      //waste = best_data->size - size;
+      break;
+    }
+    else{
+      bin_number += 1;
+    }
   }
   // now, metadata points to the first free slot
   // and prev is the previous entry.
@@ -114,6 +144,20 @@ void *my_malloc(size_t size) {
   size_t remaining_size = metadata->size - size;
   // Remove the free slot from the free list.
   my_remove_from_free_list(metadata, prev);
+  // 前のメタデータのポインタにsizeを足したときに次のメタデータのポインタになってたりしたらmergeした方が良さげ
+  if ((metadata->next->next) && (prev+prev->size+1==metadata) && (metadata+metadata->size+1==metadata->next)){
+    prev->size=prev->size+metadata->size+metadata->next->size;
+    prev->next=metadata->next->next;
+  }
+  else if ((metadata->next) && (prev+prev->size+1==metadata)){
+    prev->size =prev->size+metadata->size;
+    prev->next =metadata->next;
+  }
+  else if ((metadata->next) && (metadata+metadata->size+1==metadata->next)){
+    metadata->size=metadata->size+metadata->next->size;
+    metadata->next=metadata->next->next;
+  }
+
 
   if (remaining_size > sizeof(my_metadata_t)) {
     // Shrink the metadata for the allocated object
