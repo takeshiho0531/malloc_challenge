@@ -79,32 +79,27 @@ void *my_malloc(size_t size) {
   my_metadata_t *prev = NULL;
   // First-fit: Find the first free slot the object fits.
   // TODO: Update this logic to Best-fit!
-  //while (metadata && metadata->size < size) {
-  // TODO: minimumのサイズをもつ変数を定義したい
-  my_metadata_t *minimum = my_heap.free_head;  //?????
-
   while (metadata && metadata->size < size) {
-    //prev = metadata;
-    //metadata = metadata->next;
-    if (metadata->size < size) {
-      prev = metadata;
-      metadata = metadata->next;
-      continue;
-    }
-    if (metadata->size >= size) {
-      if (metadata->size < minimum->size) {
+    prev = metadata;
+    metadata = metadata->next;
+  }  //これ必要なの.....???(;;)
+  // TODO: minimumのサイズをもつ変数を定義したい
+  my_metadata_t *minimum = metadata;  //?????
+  my_metadata_t *minimum_prev = prev;
+
+  while (metadata) {
+    if (metadata->size >= size && metadata->size < minimum->size) {
         minimum = metadata;
+        minimum_prev = prev;
         prev = metadata;
         metadata = metadata->next;
-        continue;
-      }else{
+    }else{
         prev = metadata;
         metadata = metadata->next;
-        continue;
-      }
     }
   }
   metadata = minimum;
+  prev = minimum_prev;  //removeとかする時にprev必要だった
   // now, metadata points to the first free slot
   // and prev is the previous entry.
 
