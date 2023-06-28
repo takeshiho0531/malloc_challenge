@@ -95,14 +95,14 @@ void *my_malloc(size_t size) {
   // First-fit: Find the first free slot the object fits.
   // TODO: Update this logic to Best-fit!
 
-  //while (bin_number<5){
-  metadata=my_heap[bin_number].free_head;
-  prev = NULL;
-  while (metadata && metadata->size < size) {
-    prev = metadata;
-    metadata = metadata->next;
-  }
-    /*
+  while (bin_number<5){
+    metadata=my_heap[bin_number].free_head;
+    prev = NULL;
+    while (metadata && metadata->size < size) {
+      prev = metadata;
+      metadata = metadata->next;
+    }
+
     if (metadata){
       prev_best_data = prev;
       best_data = metadata;
@@ -112,8 +112,7 @@ void *my_malloc(size_t size) {
     else{
       bin_number += 1;
     }
-    */
-  //}
+  }
   // now, metadata points to the first free slot
   // and prev is the previous entry.
 
