@@ -31,7 +31,7 @@ typedef struct my_metadata_t {
 } my_metadata_t;
 
 typedef struct my_heap_t {
-  my_metadata_t *free_head;
+  my_metadata_t *free_head;  //なんで下も同じなの....???
   my_metadata_t dummy;
 } my_heap_t;
 
@@ -82,7 +82,24 @@ void *my_malloc(size_t size) {
   while (metadata && metadata->size < size) {
     prev = metadata;
     metadata = metadata->next;
+  }  //これ必要なの.....???(;;)
+  // TODO: minimumのサイズをもつ変数を定義したい
+  my_metadata_t *minimum = metadata;  //?????
+  my_metadata_t *minimum_prev = prev;
+
+  while (metadata) {
+    if (metadata->size >= size && metadata->size < minimum->size) {
+        minimum = metadata;
+        minimum_prev = prev;
+        prev = metadata;
+        metadata = metadata->next;
+    }else{
+        prev = metadata;
+        metadata = metadata->next;
+    }
   }
+  metadata = minimum;
+  prev = minimum_prev;  //removeとかする時にprev必要だった
   // now, metadata points to the first free slot
   // and prev is the previous entry.
 
