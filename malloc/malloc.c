@@ -80,6 +80,19 @@ void my_initialize() {
   }
 }
 
+void *first_fit(size_t size) {
+  my_heap_t my_heap;
+  my_metadata_t *metadata = my_heap.free_head;
+  my_metadata_t *prev = NULL;
+  // First-fit: Find the first free slot the object fits.
+  // TODO: Update this logic to Best-fit!
+  while (metadata && metadata->size < size) {
+    prev = metadata;
+    metadata = metadata->next;
+  }
+  return metadata, prev;
+}
+
 // my_malloc() is called every time an object is allocated.
 // |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
 // 4000. You are not allowed to use any library functions other than
@@ -128,6 +141,7 @@ void *my_malloc(size_t size) {
   // and prev is the previous entry.
 
   if (!metadata) {
+    while (!metadata){
     // There was no free slot available. We need to request a new memory region
     // from the system by calling mmap_from_system().
     //
@@ -136,14 +150,28 @@ void *my_malloc(size_t size) {
     //     metadata
     //     <---------------------->
     //            buffer_size
-    size_t buffer_size = 4096;
-    my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
-    metadata->size = buffer_size - sizeof(my_metadata_t);
-    metadata->next = NULL;
-    // Add the memory region to the free list.
-    my_add_to_free_list(metadata);
-    // Now, try my_malloc() again. This should succeed.
-    return my_malloc(size);
+      size_t buffer_size = 4096;
+      my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
+      metadata->size = buffer_size - sizeof(my_metadata_t);
+      metadata->next = NULL;
+      // Add the memory region to the free list.
+      my_add_to_free_list(metadata);
+      // Now, try my_malloc() again. This should succeed.
+      metadata, prev=first_fit(size);
+    }
+
+    void *ptr = metadata + 1;
+    size_t remaining_size = metadata->size - size;
+    my_remove_from_free_list(metadata, prev);
+    if (remaining_size > sizeof(my_metadata_t)) {
+      metadata->size = size;
+      my_metadata_t *new_metadata = (my_metadata_t *)((char *)ptr + size);
+      new_metadata->size = remaining_size - sizeof(my_metadata_t);
+      new_metadata->next = NULL;
+      my_add_to_free_list(new_metadata);
+    }
+    return ptr;
+
   }
 
   // |ptr| is the beginning of the allocated object.
