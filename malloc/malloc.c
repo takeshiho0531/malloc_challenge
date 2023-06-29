@@ -39,7 +39,7 @@ typedef struct my_heap_t {
 //
 // Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
-my_heap_t my_heap[5];
+my_heap_t my_heap[10];
 
 //
 // Helper functions (feel free to add/remove/edit!)
@@ -49,7 +49,7 @@ void my_add_to_free_list(my_metadata_t *metadata) {
   assert(!metadata->next);
   int size, bin_number;
   size = metadata->size;
-  bin_number = size/1000;
+  bin_number = size/500;
   metadata->next = my_heap[bin_number].free_head;
   my_heap[bin_number].free_head = metadata;
 }
@@ -57,7 +57,7 @@ void my_add_to_free_list(my_metadata_t *metadata) {
 void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
   int size, bin_number;
   size = metadata->size;
-  bin_number = size/1000;
+  bin_number = size/500;
 
   if (prev) {
     prev->next = metadata->next;
@@ -73,7 +73,7 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
 
 // This is called at the beginning of each challenge.
 void my_initialize() {
-  for(int i=0; i<5; i++){
+  for(int i=0; i<9; i++){
     my_heap[i].free_head = &my_heap[i].dummy;
     my_heap[i].dummy.size = 0;
     my_heap[i].dummy.next = NULL;
@@ -85,7 +85,7 @@ void my_initialize() {
 // 4000. You are not allowed to use any library functions other than
 // mmap_from_system() / munmap_to_system().
 void *my_malloc(size_t size) {
-  int bin_number = size/1000;
+  int bin_number = size/500;
   my_metadata_t *metadata = my_heap[bin_number].free_head;
   my_metadata_t *prev = NULL;
 
@@ -93,7 +93,7 @@ void *my_malloc(size_t size) {
   // First-fit: Find the first free slot the object fits.
   // TODO: Update this logic to Best-fit!
 
-  while (bin_number<5){
+  while (bin_number<9){
     metadata=my_heap[bin_number].free_head;
     prev = NULL;
     while (metadata && metadata->size < size) {
