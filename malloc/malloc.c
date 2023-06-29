@@ -52,6 +52,8 @@ void my_add_to_free_list(my_metadata_t *metadata) {
   bin_number = size/1000;
   metadata->next = my_heap[bin_number].free_head;
   my_heap[bin_number].free_head = metadata;
+
+  my_metadata_t *next_metadata = metadata + metadata->size;
 }
 
 void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
@@ -144,19 +146,6 @@ void *my_malloc(size_t size) {
   size_t remaining_size = metadata->size - size;
   // Remove the free slot from the free list.
   my_remove_from_free_list(metadata, prev);
-  // 前のメタデータのポインタにsizeを足したときに次のメタデータのポインタになってたりしたらmergeした方が良さげ
-  if ((metadata->next->next) && (prev+prev->size+1==metadata) && (metadata+metadata->size+1==metadata->next)){
-    prev->size=prev->size+metadata->size+metadata->next->size;
-    prev->next=metadata->next->next;
-  }
-  else if ((metadata->next) && (prev+prev->size+1==metadata)){
-    prev->size =prev->size+metadata->size;
-    prev->next =metadata->next;
-  }
-  else if ((metadata->next) && (metadata+metadata->size+1==metadata->next)){
-    metadata->size=metadata->size+metadata->next->size;
-    metadata->next=metadata->next->next;
-  }
 
 
   if (remaining_size > sizeof(my_metadata_t)) {
