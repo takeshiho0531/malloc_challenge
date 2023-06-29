@@ -1,1 +1,7 @@
 .DS_Store
+malloc/malloc_challenge.bin
+malloc/malloc_challenge_with_trace.bin.dSYM/Contents/Resources/DWARF/malloc_challenge_with_trace.bin
+malloc/malloc_challenge_with_trace.bin.dSYM/Contents/Info.plist
+malloc/malloc_challenge.bin.dSYM/Contents/Resources/DWARF/malloc_challenge.bin
+malloc/malloc_challenge.bin.dSYM/Contents/Info.plist
+malloc/malloc_challenge_with_trace.bin

@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define INT_MAX 2147483647
 //
 // Interfaces to get memory pages from OS
 //
@@ -38,7 +39,7 @@ typedef struct my_heap_t {
 //
 // Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
-my_heap_t my_heap;
+my_heap_t my_heap[10];
 
 //
 // Helper functions (feel free to add/remove/edit!)
@@ -46,15 +47,22 @@ my_heap_t my_heap;
 
 void my_add_to_free_list(my_metadata_t *metadata) {
   assert(!metadata->next);
-  metadata->next = my_heap.free_head;
-  my_heap.free_head = metadata;
+  int size, bin_number;
+  size = metadata->size;
+  bin_number = size/500;
+  metadata->next = my_heap[bin_number].free_head;
+  my_heap[bin_number].free_head = metadata;
 }
 
 void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
+  int size, bin_number;
+  size = metadata->size;
+  bin_number = size/500;
+
   if (prev) {
     prev->next = metadata->next;
   } else {
-    my_heap.free_head = metadata->next;
+    my_heap[bin_number].free_head = metadata->next;
   }
   metadata->next = NULL;
 }
@@ -65,16 +73,15 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
 
 // This is called at the beginning of each challenge.
 void my_initialize() {
-  my_heap.free_head = &my_heap.dummy;
-  my_heap.dummy.size = 0;
-  my_heap.dummy.next = NULL;
+  for(int i=0; i<9; i++){
+    my_heap[i].free_head = &my_heap[i].dummy;
+    my_heap[i].dummy.size = 0;
+    my_heap[i].dummy.next = NULL;
+  }
 }
 
-// my_malloc() is called every time an object is allocated.
-// |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
-// 4000. You are not allowed to use any library functions other than
-// mmap_from_system() / munmap_to_system().
-void *my_malloc(size_t size) {
+void *first_fit(size_t size) {
+  my_heap_t my_heap;
   my_metadata_t *metadata = my_heap.free_head;
   my_metadata_t *prev = NULL;
   // First-fit: Find the first free slot the object fits.
@@ -83,10 +90,58 @@ void *my_malloc(size_t size) {
     prev = metadata;
     metadata = metadata->next;
   }
+  return metadata, prev;
+}
+
+// my_malloc() is called every time an object is allocated.
+// |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
+// 4000. You are not allowed to use any library functions other than
+// mmap_from_system() / munmap_to_system().
+void *my_malloc(size_t size) {
+  int bin_number = size/500;
+  my_metadata_t *metadata = my_heap[bin_number].free_head;
+  my_metadata_t *prev = NULL;
+
+  //int waste = INT_MAX;
+  // First-fit: Find the first free slot the object fits.
+  // TODO: Update this logic to Best-fit!
+
+  while (bin_number<9){
+    metadata=my_heap[bin_number].free_head;
+    prev = NULL;
+    while (metadata && metadata->size < size) {
+      prev = metadata;
+      metadata = metadata->next;
+    }
+    my_metadata_t *minimum = metadata;
+    my_metadata_t *minimum_prev = prev;
+
+    while (metadata) {
+      if (metadata->size >= size && metadata->size < minimum->size) {
+        minimum = metadata;
+        minimum_prev = prev;
+        prev = metadata;
+        metadata = metadata->next;
+      }else{
+        prev = metadata;
+        metadata = metadata->next;
+      }
+    }
+    metadata = minimum;
+    prev = minimum_prev;
+
+    if (metadata){
+      break;
+    }
+    else{
+      bin_number += 1;
+    }
+  }
   // now, metadata points to the first free slot
   // and prev is the previous entry.
 
   if (!metadata) {
+    while (!metadata){
     // There was no free slot available. We need to request a new memory region
     // from the system by calling mmap_from_system().
     //
@@ -95,14 +150,28 @@ void *my_malloc(size_t size) {
     //     metadata
     //     <---------------------->
     //            buffer_size
-    size_t buffer_size = 4096;
-    my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
-    metadata->size = buffer_size - sizeof(my_metadata_t);
-    metadata->next = NULL;
-    // Add the memory region to the free list.
-    my_add_to_free_list(metadata);
-    // Now, try my_malloc() again. This should succeed.
-    return my_malloc(size);
+      size_t buffer_size = 4096;
+      my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
+      metadata->size = buffer_size - sizeof(my_metadata_t);
+      metadata->next = NULL;
+      // Add the memory region to the free list.
+      my_add_to_free_list(metadata);
+      // Now, try my_malloc() again. This should succeed.
+      metadata, prev=first_fit(size);
+    }
+
+    void *ptr = metadata + 1;
+    size_t remaining_size = metadata->size - size;
+    my_remove_from_free_list(metadata, prev);
+    if (remaining_size > sizeof(my_metadata_t)) {
+      metadata->size = size;
+      my_metadata_t *new_metadata = (my_metadata_t *)((char *)ptr + size);
+      new_metadata->size = remaining_size - sizeof(my_metadata_t);
+      new_metadata->next = NULL;
+      my_add_to_free_list(new_metadata);
+    }
+    return ptr;
+
   }
 
   // |ptr| is the beginning of the allocated object.
